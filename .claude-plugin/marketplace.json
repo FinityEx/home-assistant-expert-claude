@@ -1,7 +1,14 @@
 {
-  "name": "home-assistant-expert",
-  "version": "1.0.0",
-  "description": "Expert agent for Home Assistant, ESPHome, HACS, Dashboards, and Debugging.",
-  "author": "kwojtek",
-  "license": "MIT"
+  "owner": {
+    "name": "FinityEx",
+    "url": "https://github.com/FinityEx"
+  },
+  "plugins": [
+    {
+      "name": "home-assistant-expert",
+      "description": "Expert agent for Home Assistant, ESPHome, HACS, Dashboards, and Debugging.",
+      "url": "https://github.com/FinityEx/home-assistant-expert-claude",
+      "path": "."
+    }
+  ]
 }
