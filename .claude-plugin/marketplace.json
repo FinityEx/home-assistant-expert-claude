@@ -1,0 +1,7 @@
+{
+  "name": "home-assistant-expert",
+  "version": "1.0.0",
+  "description": "Expert agent for Home Assistant, ESPHome, HACS, Dashboards, and Debugging.",
+  "author": "kwojtek",
+  "license": "MIT"
+}
