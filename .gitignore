@@ -1,0 +1,22 @@
+# Backups
+ha_backups/
+*.backup
+*.bak
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-*
+
+# Logs
+*.log
+diagnostics*.txt
