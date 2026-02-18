@@ -7,6 +7,8 @@ set -e
 
 # Configuration
 HA_HOST="${HA_HOST:-root@homeassistant.local}"
+SSH_OPTS="-o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=2"
+SCP_OPTS="-o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=2"
 LOCAL_BACKUP_DIR="${LOCAL_BACKUP_DIR:-./ha_backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_NAME="ha_config_${TIMESTAMP}"
@@ -35,7 +37,7 @@ echo ""
 
 # Check SSH connectivity
 echo -e "${COLOR_BLUE}[2/5] Checking SSH connectivity...${COLOR_RESET}"
-if ! ssh -o ConnectTimeout=5 "${HA_HOST}" "exit" 2>/dev/null; then
+if ! ssh ${SSH_OPTS} "${HA_HOST}" "exit" 2>/dev/null; then
     echo -e "${COLOR_RED}✗ Cannot connect to ${HA_HOST}${COLOR_RESET}"
     exit 1
 fi
@@ -47,7 +49,7 @@ echo -e "${COLOR_BLUE}[3/5] Creating backup on Home Assistant...${COLOR_RESET}"
 echo -e "${COLOR_YELLOW}Backing up configuration files...${COLOR_RESET}"
 
 # Create temporary backup directory on remote
-ssh "${HA_HOST}" "mkdir -p /tmp/${BACKUP_NAME}"
+ssh ${SSH_OPTS} "${HA_HOST}" "mkdir -p /tmp/${BACKUP_NAME}"
 
 # Copy essential configuration files
 FILES_TO_BACKUP=(
@@ -68,9 +70,9 @@ FILES_TO_BACKUP=(
 
 echo "Copying files:"
 for file in "${FILES_TO_BACKUP[@]}"; do
-    if ssh "${HA_HOST}" "test -e /homeassistant/config/${file}"; then
+    if ssh ${SSH_OPTS} "${HA_HOST}" "test -e /homeassistant/config/${file}"; then
         echo "  ✓ ${file}"
-        ssh "${HA_HOST}" "mkdir -p /tmp/${BACKUP_NAME}/$(dirname ${file}) && cp -r /homeassistant/config/${file} /tmp/${BACKUP_NAME}/${file}" 2>/dev/null || true
+        ssh ${SSH_OPTS} "${HA_HOST}" "mkdir -p /tmp/${BACKUP_NAME}/$(dirname ${file}) && cp -r /homeassistant/config/${file} /tmp/${BACKUP_NAME}/${file}" 2>/dev/null || true
     else
         echo "  - ${file} (not found)"
     fi
@@ -78,9 +80,9 @@ done
 
 # Backup custom_components and packages if they exist
 for dir in "custom_components" "packages" "themes" "www"; do
-    if ssh "${HA_HOST}" "test -d /homeassistant/config/${dir}"; then
+    if ssh ${SSH_OPTS} "${HA_HOST}" "test -d /homeassistant/config/${dir}"; then
         echo "  ✓ ${dir}/ (directory)"
-        ssh "${HA_HOST}" "cp -r /homeassistant/config/${dir} /tmp/${BACKUP_NAME}/"
+        ssh ${SSH_OPTS} "${HA_HOST}" "cp -r /homeassistant/config/${dir} /tmp/${BACKUP_NAME}/"
     fi
 done
 
@@ -88,19 +90,19 @@ echo ""
 
 # Create tarball
 echo -e "${COLOR_BLUE}[4/5] Creating archive...${COLOR_RESET}"
-ssh "${HA_HOST}" "cd /tmp && tar czf ${BACKUP_NAME}.tar.gz ${BACKUP_NAME}"
+ssh ${SSH_OPTS} "${HA_HOST}" "cd /tmp && tar czf ${BACKUP_NAME}.tar.gz ${BACKUP_NAME}"
 echo -e "${COLOR_GREEN}✓ Archive created${COLOR_RESET}"
 echo ""
 
 # Download backup
 echo -e "${COLOR_BLUE}[5/5] Downloading backup...${COLOR_RESET}"
-scp "${HA_HOST}:/tmp/${BACKUP_NAME}.tar.gz" "${LOCAL_BACKUP_DIR}/"
+scp ${SCP_OPTS} "${HA_HOST}:/tmp/${BACKUP_NAME}.tar.gz" "${LOCAL_BACKUP_DIR}/"
 echo -e "${COLOR_GREEN}✓ Backup downloaded to: ${LOCAL_BACKUP_DIR}/${BACKUP_NAME}.tar.gz${COLOR_RESET}"
 echo ""
 
 # Cleanup remote files
 echo -e "${COLOR_YELLOW}Cleaning up remote files...${COLOR_RESET}"
-ssh "${HA_HOST}" "rm -rf /tmp/${BACKUP_NAME} /tmp/${BACKUP_NAME}.tar.gz"
+ssh ${SSH_OPTS} "${HA_HOST}" "rm -rf /tmp/${BACKUP_NAME} /tmp/${BACKUP_NAME}.tar.gz"
 echo -e "${COLOR_GREEN}✓ Cleanup complete${COLOR_RESET}"
 echo ""
 

@@ -286,7 +286,8 @@ volumes:
 # traefik.yml
 api:
   dashboard: true
-  insecure: true
+  # ⚠️ SECURITY: Never use insecure mode in production
+  # Access dashboard via authenticated route instead
 
 entryPoints:
   web:
@@ -301,6 +302,9 @@ entryPoints:
     http:
       tls:
         certResolver: letsencrypt
+  # Internal dashboard port (not exposed externally)
+  traefik:
+    address: "127.0.0.1:8080"
 
 certificatesResolvers:
   letsencrypt:
@@ -338,6 +342,17 @@ http:
       middlewares:
         - ha-headers
         - ha-ratelimit
+    
+    # Secure Traefik dashboard access
+    traefik-dashboard:
+      rule: "Host(`traefik.example.com`)"
+      service: api@internal
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - dashboard-auth  # Basic auth required
 
   services:
     homeassistant:
@@ -363,7 +378,21 @@ http:
       rateLimit:
         average: 100
         burst: 50
+    
+    # Basic auth for Traefik dashboard
+    # Generate password: htpasswd -nb admin your-password
+    dashboard-auth:
+      basicAuth:
+        users:
+          - "admin:$apr1$..." # Replace with actual hashed password
 ```
+
+**Security Notes:**
+- ⚠️ Never expose Traefik dashboard without authentication
+- Use strong passwords for dashboard access
+- Consider IP whitelisting for admin interfaces
+- Regularly update Traefik for security patches
+- Monitor access logs for unauthorized attempts
 
 ---
 

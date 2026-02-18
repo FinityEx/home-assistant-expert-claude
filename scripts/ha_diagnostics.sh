@@ -7,6 +7,7 @@ set -e
 
 # Configuration
 HA_HOST="${HA_HOST:-root@homeassistant.local}"
+SSH_OPTS="-o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=2"
 OUTPUT_FILE=""
 COLOR_RED='\033[0;31m'
 COLOR_GREEN='\033[0;32m'
@@ -34,7 +35,7 @@ run_diagnostic() {
     local command="$2"
     
     echo -e "${COLOR_YELLOW}${description}${COLOR_RESET}"
-    if ssh "${HA_HOST}" "${command}" 2>&1; then
+    if ssh ${SSH_OPTS} "${HA_HOST}" "${command}" 2>&1; then
         echo -e "${COLOR_GREEN}✓ Success${COLOR_RESET}"
     else
         echo -e "${COLOR_RED}✗ Failed${COLOR_RESET}"
@@ -53,7 +54,7 @@ echo -e "${COLOR_BLUE}========================================${COLOR_RESET}"
 
 # Check connectivity
 print_section "1. Connectivity Check"
-if ! ssh -o ConnectTimeout=5 "${HA_HOST}" "exit" 2>/dev/null; then
+if ! ssh ${SSH_OPTS} "${HA_HOST}" "exit" 2>/dev/null; then
     echo -e "${COLOR_RED}✗ Cannot connect to ${HA_HOST}${COLOR_RESET}"
     exit 1
 fi
@@ -76,10 +77,7 @@ run_diagnostic "OS Info:" \
 # Running Services
 print_section "3. Running Add-ons"
 run_diagnostic "List of installed add-ons:" \
-    "ha addons"
-
-run_diagnostic "Add-on status:" \
-    "ha addons info"
+    "ha addons --raw-json | grep -o '\"slug\":\"[^\"]*\"' | cut -d'\"' -f4"
 
 # Integration Status
 print_section "4. Integration Status"
@@ -87,7 +85,7 @@ run_diagnostic "Core state:" \
     "ha core stats"
 
 echo -e "${COLOR_YELLOW}Checking integrations in configuration...${COLOR_RESET}"
-ssh "${HA_HOST}" "grep -E '^[a-z_]+:' /homeassistant/config/configuration.yaml | sort | uniq" 2>/dev/null || echo "Could not read configuration.yaml"
+ssh ${SSH_OPTS} "${HA_HOST}" "grep -E '^[a-z_]+:' /homeassistant/config/configuration.yaml | sort | uniq" 2>/dev/null || echo "Could not read configuration.yaml"
 echo ""
 
 # Database Status

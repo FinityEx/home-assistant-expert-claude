@@ -7,6 +7,8 @@ set -e
 
 # Configuration
 HA_HOST="${HA_HOST:-root@homeassistant.local}"
+SSH_OPTS="-o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=2"
+
 COLOR_RED='\033[0;31m'
 COLOR_GREEN='\033[0;32m'
 COLOR_YELLOW='\033[1;33m'
@@ -26,12 +28,12 @@ echo ""
 
 # Check SSH connectivity
 echo -e "${COLOR_BLUE}[1/4] Checking SSH connectivity to ${HA_HOST}...${COLOR_RESET}"
-if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "${HA_HOST}" "exit" 2>/dev/null; then
+if ! ssh ${SSH_OPTS} "${HA_HOST}" "exit" 2>/dev/null; then
     echo -e "${COLOR_RED}✗ Cannot connect to ${HA_HOST}${COLOR_RESET}"
     echo -e "${COLOR_YELLOW}Make sure:${COLOR_RESET}"
     echo "  - SSH is enabled in Home Assistant"
     echo "  - The host is reachable: ${HA_HOST}"
-    echo "  - SSH keys are set up or password is configured"
+    echo "  - SSH keys or password authentication is configured"
     exit 1
 fi
 echo -e "${COLOR_GREEN}✓ SSH connection successful${COLOR_RESET}"
@@ -39,7 +41,7 @@ echo ""
 
 # Get Home Assistant info
 echo -e "${COLOR_BLUE}[2/4] Getting Home Assistant version...${COLOR_RESET}"
-HA_INFO=$(ssh "${HA_HOST}" "ha core info --raw-json" 2>/dev/null || echo "{}")
+HA_INFO=$(ssh ${SSH_OPTS} "${HA_HOST}" "ha core info --raw-json" 2>/dev/null || echo "{}")
 HA_VERSION=$(echo "${HA_INFO}" | grep -o '"version":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
 echo -e "${COLOR_GREEN}✓ Home Assistant version: ${HA_VERSION}${COLOR_RESET}"
 echo ""
@@ -49,7 +51,7 @@ echo -e "${COLOR_BLUE}[3/4] Validating Home Assistant configuration...${COLOR_RE
 echo -e "${COLOR_YELLOW}Running: ha core check${COLOR_RESET}"
 echo ""
 
-VALIDATION_OUTPUT=$(ssh "${HA_HOST}" "ha core check" 2>&1 || true)
+VALIDATION_OUTPUT=$(ssh ${SSH_OPTS} "${HA_HOST}" "ha core check" 2>&1 || true)
 echo "${VALIDATION_OUTPUT}"
 echo ""
 
@@ -70,7 +72,7 @@ if echo "${VALIDATION_OUTPUT}" | grep -q "Configuration valid"; then
     # Offer to restart if requested
     if [[ "$RESTART" == "true" ]]; then
         echo -e "${COLOR_BLUE}[4/4] Restarting Home Assistant Core...${COLOR_RESET}"
-        ssh "${HA_HOST}" "ha core restart"
+        ssh ${SSH_OPTS} "${HA_HOST}" "ha core restart"
         echo -e "${COLOR_GREEN}✓ Restart initiated${COLOR_RESET}"
         echo -e "${COLOR_YELLOW}Home Assistant will be unavailable for 30-60 seconds${COLOR_RESET}"
         echo ""
